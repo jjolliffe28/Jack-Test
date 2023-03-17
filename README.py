@@ -5,8 +5,13 @@ from tableauserverclient import Server
 # specify the path to the trusted SSL certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-# create a server object and connect to the Tableau Server using username and password
-server = Server('https://yourtableauserver.com', use_server_version=True, ssl_context=ssl_context)
+# create a server object
+server = Server('https://yourtableauserver.com', use_server_version=True)
+
+# set the SSL context for the server
+server.add_http_options({'verify': ssl_context})
+
+# connect to the Tableau Server using username and password
 server.auth.sign_in('yourusername', 'yourpassword')
 
 # get the workbook and download data sources as csv
