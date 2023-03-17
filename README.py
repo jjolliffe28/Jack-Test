@@ -1,39 +1,28 @@
+import getpass
 import tableauserverclient as TSC
-from tableauserverclient import Server
-from tableauserverclient import TableauAuth
-from tableauserverclient import OAuth2Auth
 
-# Replace with your Tableau Server URL
-server_url = 'https://your-server.com'
+# Set up the authentication
+username = '<username>'
+password = getpass.getpass()
+site_id = '<site_id>'
 
-# Replace with your OAuth access token
-access_token = 'your-oauth-access-token'
+auth = TSC.TableauAuth(username, password, site_id=site_id)
 
-# Replace with the name of your workbook and data source
-workbook_name = 'your-workbook-name'
-datasource_name = 'your-data-source-name'
+# Set up the server object
+server = TSC.Server('<server_url>')
 
-# Replace with the path where you want to save the CSV file
-csv_path = 'path/to/output.csv'
+# Connect to the server
+with server.auth.sign_in(auth):
+    # Find the workbook by name
+    workbook_name = '<workbook_name>'
+    workbooks, _ = server.workbooks.get()
 
-# Create a Server object
-server = Server(server_url)
-
-# Create an OAuth authentication object
-auth = OAuth2Auth(access_token)
-
-# Authenticate and sign in to the server
-server.auth.sign_in(auth)
-
-# Find the workbook
-workbook = server.workbooks.get_by_name(workbook_name)
-
-# Get the data source
-datasource = workbook.datasources.get_by_name(datasource_name)
-
-# Download the data source as a CSV
-with open(csv_path, 'wb') as f:
-    f.write(datasource.download())
-
-# Sign out of the server
-server.auth.sign_out()
+    for workbook in workbooks:
+        if workbook.name == workbook_name:
+            # Download each data source in the workbook
+            for ds in workbook.published_ds:
+                ds_data = server.datasources.download(ds.id)
+                ds_file_name = f'{ds.name}.csv'
+                with open(ds_file_name, 'wb') as f:
+                    f.write(ds_data)
+                print(f'Successfully downloaded data source {ds.name} to {ds_file_name}')
