@@ -1,90 +1,185 @@
+import numpy as np
 import matplotlib.pyplot as plt
-import math
+from mpl_toolkits.mplot3d import Axes3D
+
+# Input data
+ball_speed = 150  # mph
+launch_angle = 10  # degrees
+backspin = 3000  # rpm
+side_spin = 500  # rpm
+carry_distance = 200  # yards
+offline = -10  # yards
+wind_speed = 5  # mph
+wind_direction = 90  # degrees
 
 # Constants
-GRAVITY = 9.81
-RHO = 1.225 # Air density at 70 degrees Fahrenheit and sea level pressure
-DRAG_COEFFICIENT = 0.2
-BALL_RADIUS = 0.02135 # meters
+g = 32.2  # ft/s^2
+rho = 0.00238  # lb/ft^3
+d = 1.68  # in
+m = 0.0459  # lb
+cd = 0.25  # coefficient of drag
+cl = 0.15  # coefficient of lift
+S = np.pi * (d/2)**2  # ft^2
+theta = np.radians(launch_angle)
+vx0 = ball_speed * np.cos(theta)
+vy0 = ball_speed * np.sin(theta)
+vz0 = 0
+wx0 = side_spin * np.pi / 30
+wy0 = backspin * np.pi / 30
+wz0 = 0
+vxw0 = wind_speed * np.cos(np.radians(wind_direction))
+vyw0 = wind_speed * np.sin(np.radians(wind_direction))
+vzw0 = 0
 
-# Inputs
-ball_speed = 80 # mph
-spin_rate = 3000 # rpm
-launch_angle = 12 # degrees
-ball_mass = 0.04593 # kg
-initial_position = (0, 0) # x, y coordinates in meters
-wind_speed = 0 # mph
+# Simulation
+tmax = 10  # seconds
+dt = 0.01  # seconds
+t = np.arange(0, tmax, dt)
+x = np.zeros_like(t)
+y = np.zeros_like(t)
+z = np.zeros_like(t)
+vx = np.full_like(t, vx0)
+vy = np.full_like(t, vy0)
+vz = np.full_like(t, vz0)
+wx = np.full_like(t, wx0)
+wy = np.full_like(t, wy0)
+wz = np.full_like(t, wz0)
+vxw = np.full_like(t, vxw0)
+vyw = np.full_like(t, vyw0)
+vzw = np.full_like(t, vzw0)
 
-# Convert inputs to SI units
-ball_speed_mps = ball_speed * 0.44704 # mph to m/s
-spin_rate_rps = spin_rate / 60 # rpm to rps
-launch_angle_rad = math.radians(launch_angle) # degrees to radians
-wind_speed_mps = wind_speed * 0.44704 # mph to m/s
+for i in range(1, len(t)):
+    # Velocity due to spin
+    v_spin = np.sqrt(wx[i-1]**2 + wy[i-1]**2 + wz[i-1]**2) * d/2
+    drag = 0.5 * rho * v_spin**2 * cd * S
+    lift = 0.5 * rho * v_spin**2 * cl * S
+    fx_spin = -lift * wy[i-1] - drag * wx[i-1]
+    fy_spin = lift * wx[i-1] - drag * wy[i-1]
+    fz_spin = 0
+    # Velocity due to wind
+    fx_wind = -0.5 * rho * S * cd * (vx[i-1] - vxw[i-1])**2
+    fy_wind = -0.5 * rho * S * cd * (vy[i-1] - vyw[i-1])**2
+    fz_wind = -0.5 * rho * S * cd * (vz[i-1] - vzw[i-1])**2
+    # Acceleration
+    ax = (fx_spin + fx_wind) / m
+    ay = (fy_spin + fy_wind) / m
+    az = -g + fz_spin
 
-# Calculate initial velocity components
-launch_speed_mps = ball_speed_mps * math.cos(launch_angle_rad)
-launch_direction_rad = math.atan2(ball_speed_mps * math.sin(launch_angle_rad), launch_speed_mps)
-launch_direction_deg = math.degrees(launch_direction_rad)
 
-# Calculate air resistance and spin decay coefficients
-cross_sectional_area = math.pi * BALL_RADIUS**2 # Assume spherical ball
-air_resistance_coef = (0.5 * RHO * DRAG_COEFFICIENT * cross_sectional_area) / ball_mass
-spin_decay_coef = (0.5 * RHO * cross_sectional_area * BALL_RADIUS**3) / (2/5 * ball_mass)
 
-# Simulation time step and duration
-delta_t = 0.001 # seconds
-t = 0
-t_end = 10 # seconds
+    # Update velocity
+    vx[i] = vx[i-1] + ax * dt
+    vy[i] = vy[i-1] + ay * dt
+    vz[i] = vz[i-1] + az * dt
+    # Update position
+    x[i] = x[i-1] + vx[i] * dt
+    y[i] = y[i-1] + vy[i] * dt
+    z[i] = z[i-1] + vz[i] * dt
 
-# Simulation variables
-position = initial_position
-velocity = (launch_speed_mps * math.cos(launch_direction_rad) + wind_speed_mps, launch_speed_mps * math.sin(launch_direction_rad))
-spin = spin_rate_rps * math.pi / 30 # rps to rad/s
-total_spin = spin
-
-# Lists to store trajectory data
-x = [position[0]]
-y = [position[1]]
-
-# Run simulation until ball hits the ground or reaches end of simulation time
-while position[1] >= 0 and t < t_end:
-    # Calculate acceleration due to gravity and air resistance
-    g = -GRAVITY
-    air_resistance = air_resistance_coef * velocity[0]**2
-    acceleration = (g + air_resistance) * math.sin(launch_direction_rad), (g + air_resistance) * math.cos(launch_direction_rad)
-    
-    # Update velocity and position
-    velocity = velocity[0] + acceleration[0] * delta_t, velocity[1] + acceleration[1] * delta_t
-    position = position[0] + velocity[0] * delta_t, position[1] + velocity[1] * delta_t
-    
-    # Update spin and spin direction
-    spin_decay = spin_decay_coef * velocity[0]**2 * delta_t
-    spin = spin - spin_decay
-    total_spin = total_spin - spin_decay
-    spin_direction_rad = math.atan2(total_spin, velocity[0])
-    spin_direction_deg = math.degrees(spin_direction_rad)
-    
-    # Append position to trajectory lists
-    x.append(position[0])
-    y.append(position[1])
-    
-    # Increment simulation time
-    t += delta_t
-
-# Create plot of trajectory
-plt.plot(x, y)
-plt.title("Golf Shot")
-plt.xlabel("Distance (m)")
-plt.ylabel("Height (m)")
-plt.gca().set_aspect('equal', adjustable='box')
-plt.annotate("Ball speed: {} mph".format(round(ball_speed)), xy=(0.05, 0.95), xycoords='axes fraction')
-plt.annotate("Spin rate: {} rpm".format(round(spin_rate)), xy=(0.05, 0.9), xycoords='axes fraction')
-plt.annotate("Launch angle: {} degrees".format(round(launch_angle)), xy=(0.05, 0.85), xycoords='axes fraction')
-plt.annotate("Total distance: {:.1f} m".format(x[-1]), xy=(0.05, 0.8), xycoords='axes fraction')
-plt.annotate("Total hang time: {:.1f} s".format(t), xy=(0.05, 0.75), xycoords='axes fraction')
-plt.annotate("Max height: {:.1f} m".format(max(y)), xy=(0.05, 0.7), xycoords='axes fraction')
-plt.annotate("Wind speed: {} mph".format(wind_speed), xy=(0.05, 0.65), xycoords='axes fraction')
-plt.annotate("Launch direction: {} degrees".format(round(launch_direction_deg)), xy=(0.05, 0.6), xycoords='axes fraction')
-plt.annotate("Spin direction: {} degrees".format(round(spin_direction_deg)), xy=(0.05, 0.55), xycoords='axes fraction')
+# Plot 3D trajectory
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot(x/3, y/3, z/3, 'b-', linewidth=2)
+ax.set_xlabel('X (yards)')
+ax.set_ylabel('Y (yards)')
+ax.set_zlabel('Z (yards)')
+ax.set_xlim(0, 500)
+ax.set_ylim(-250, 250)
+ax.set_zlim(0, 150)
 plt.show()
 
+
+
+
+    # Update velocity
+    vx[i] = vx[i-1] + ax * dt
+    vy[i] = vy[i-1] + ay * dt
+    vz[i] = vz[i-1] + az * dt
+    # Update position
+    x[i] = x[i-1] + vx[i] * dt
+    y[i] = y[i-1] + vy[i] * dt
+    z[i] = z[i-1] + vz[i] * dt
+
+# Plot 3D trajectory
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot(x/3, y/3, z/3, 'b-', linewidth=2)
+ax.set_xlabel('X (yards)')
+ax.set_ylabel('Y (yards)')
+ax.set_zlabel('Z (yards)')
+ax.set_xlim(0, 500)
+ax.set_ylim(-250, 250)
+ax.set_zlim(0, 150)
+plt.show()
+
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Input data
+ball_speed = 150  # mph
+launch_angle = 10  # degrees
+backspin = 3000  # rpm
+side_spin = 500  # rpm
+carry_distance = 200  # yards
+offline = -10  # yards
+wind_speed = 5  # mph
+wind_direction = 90  # degrees
+
+# Constants
+g = 32.2  # ft/s^2
+rho = 0.00238  # lb/ft^3
+d = 1.68  # in
+m = 0.0459  # lb
+cd = 0.25  # coefficient of drag
+cl = 0.15  # coefficient of lift
+S = np.pi * (d/2)**2  # ft^2
+theta = np.radians(launch_angle)
+vx0 = ball_speed * np.cos(theta)
+vy0 = ball_speed * np.sin(theta)
+vz0 = 0
+wx0 = side_spin * np.pi / 30
+wy0 = backspin * np.pi / 30
+wz0 = 0
+vxw0 = wind_speed * np.cos(np.radians(wind_direction))
+vyw0 = wind_speed * np.sin(np.radians(wind_direction))
+vzw0 = 0
+
+# Simulation
+tmax = 10  # seconds
+dt = 0.01  # seconds
+t = np.arange(0, tmax, dt)
+x = np.zeros_like(t)
+y = np.zeros_like(t)
+z = np.zeros_like(t)
+vx = np.full_like(t, vx0)
+vy = np.full_like(t, vy0)
+vz = np.full_like(t, vz0)
+wx = np.full_like(t, wx0)
+wy = np.full_like(t, wy0)
+wz = np.full_like(t, wz0)
+vxw = np.full_like(t, vxw0)
+vyw = np.full_like(t, vyw0)
+vzw = np.full_like(t, vzw0)
+
+for i in range(1, len(t)):
+    # Velocity due to spin
+    v_spin = np.sqrt(wx[i-1]**2 + wy[i-1]**2 + wz[i-1]**2) * d/2
+    drag = 0.5 * rho * v_spin**2 * cd * S
+    lift = 0.5 * rho * v_spin**2 * cl * S
+    fx_spin = -lift * wy[i-1] - drag * wx[i-1]
+    fy_spin = lift * wx[i-1] - drag * wy[i-1]
+    fz_spin = 0
+    # Velocity due to wind
+    fx_wind = -0.5 * rho * S * cd * (vx[i-1] - vxw[i-1])**2
+    fy_wind = -0.5 * rho * S * cd * (vy[i-1] - vyw[i-1])**2
+    fz_wind = -0.5 * rho * S * cd * (vz[i-1] - vzw[i-1])**2
+    # Acceleration
+    ax = (fx_spin + fx_wind) / m
+    ay = (fy_spin + fy_wind) / m
+    az = -g + fz_spin + fz_wind
+    # Velocity
+    vx[i] = vx[i-1] + ax * dt
