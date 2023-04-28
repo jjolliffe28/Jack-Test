@@ -1,45 +1,37 @@
-import math
+import pandas as pd
 
-# Define constants
-DRAG_COEFFICIENT = 0.295
-BALL_DIAMETER = 0.04267 # meters
-BALL_MASS = 0.04593 # kg
-GRAVITY = 9.81 # m/s^2
-TEMPERATURE = 21.11 # Celsius
-ALTITUDE = 192 # meters
+# create a sample dataframe
+df = pd.DataFrame({
+    'name': ['John', 'Mary', 'John', 'Mary', 'John'],
+    'flag': ['Y', 'N', 'Y', 'Y', 'N'],
+    'date': ['2022-01-01', '2022-01-02', '2022-01-03', '2022-01-04', '2022-01-05']
+})
 
-# Define input variables
-club_head_speed = float(input("Enter club head speed (m/s): "))
-ball_speed = float(input("Enter ball speed (m/s): "))
-spin_rate = float(input("Enter spin rate (rpm): "))
-launch_angle = float(input("Enter launch angle (degrees): "))
+# convert the date column to datetime format
+df['date'] = pd.to_datetime(df['date'])
 
-# Calculate variables
-ball_area = math.pi * (BALL_DIAMETER/2)**2
-ball_velocity = ball_speed * 0.44704 # convert to m/s
-air_density = 1.2929 * ((273.15 + TEMPERATURE - 0.0065 * ALTITUDE) / 273.15)**(-5.256)
-spin_ratio = spin_rate / ball_speed
-ball_mass = BALL_MASS
-time_of_flight = (2 * ball_velocity * math.sin(math.radians(launch_angle))) / GRAVITY
+# sort the dataframe by name and date in descending order
+df = df.sort_values(['name', 'date'], ascending=[True, False])
 
-# Calculate distance
-distance = 0
-delta_t = 0.01
-x = 0
-y = 0
-vx = ball_velocity * math.cos(math.radians(launch_angle))
-vy = ball_velocity * math.sin(math.radians(launch_angle))
+# add a new column to store the last changed date
+df['last_change_date'] = None
 
-while y >= 0:
-    delta_v = air_density * ball_area * (vx**2 + vy**2) * DRAG_COEFFICIENT / (2 * ball_mass)
-    delta_vx = -delta_v * vx / math.sqrt(vx**2 + vy**2)
-    delta_vy = -delta_v * vy / math.sqrt(vx**2 + vy**2)
-    delta_vy += spin_ratio * delta_t
-    vx += delta_vx * delta_t
-    vy += (delta_vy - GRAVITY) * delta_t
-    x += vx * delta_t
-    y += vy * delta_t
-    distance = x
+# iterate over each unique name in the dataframe
+for name in df['name'].unique():
+    # get the rows for the current name
+    name_df = df[df['name'] == name]
+    
+    # iterate over each row in the name_df in descending order
+    for i, row in name_df[::-1].iterrows():
+        # if it's the first row, set the last_change_date to the date of the row
+        if i == name_df.index[-1]:
+            df.loc[i, 'last_change_date'] = row['date']
+        else:
+            # get the previous row
+            prev_row = name_df.loc[i + 1]
+            # if the flag has changed from Y to N or from N to Y
+            if prev_row['flag'] != row['flag']:
+                df.loc[i, 'last_change_date'] = prev_row['date']
 
-# Print result
-print("The golf ball will travel approximately {:.2f} yards".format(distance * 1.09361))
+# output the final dataframe
+print(df)
