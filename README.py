@@ -1,37 +1,21 @@
-import pandas as pd
+last_change_dates = {}
 
-# create a sample dataframe
-df = pd.DataFrame({
-    'name': ['John', 'Mary', 'John', 'Mary', 'John'],
-    'flag': ['Y', 'N', 'Y', 'Y', 'N'],
-    'date': ['2022-01-01', '2022-01-02', '2022-01-03', '2022-01-04', '2022-01-05']
-})
+# loop through each row of the dataframe
+for index, row in df.iterrows():
+    # check if the name is already in the dictionary
+    if row['name'] in last_change_dates:
+        # check if the flag has changed
+        if row['flag'] != last_change_dates[row['name']][0]:
+            # if flag has changed, update the dictionary with the new date
+            last_change_dates[row['name']] = (row['flag'], row['date'])
+    else:
+        # if name is not in the dictionary, add it with current flag and date
+        last_change_dates[row['name']] = (row['flag'], row['date'])
 
-# convert the date column to datetime format
-df['date'] = pd.to_datetime(df['date'])
+# create a new column in the dataframe to store the last change dates
+df['last_change_date'] = df['name'].apply(lambda x: last_change_dates[x][1])
 
-# sort the dataframe by name and date in descending order
-df = df.sort_values(['name', 'date'], ascending=[True, False])
+# sort the dataframe back to its original order
+df = df.sort_index()
 
-# add a new column to store the last changed date
-df['last_change_date'] = None
-
-# iterate over each unique name in the dataframe
-for name in df['name'].unique():
-    # get the rows for the current name
-    name_df = df[df['name'] == name]
-    
-    # iterate over each row in the name_df in descending order
-    for i, row in name_df[::-1].iterrows():
-        # if it's the first row, set the last_change_date to the date of the row
-        if i == name_df.index[-1]:
-            df.loc[i, 'last_change_date'] = row['date']
-        else:
-            # get the previous row
-            prev_row = name_df.loc[i + 1]
-            # if the flag has changed from Y to N or from N to Y
-            if prev_row['flag'] != row['flag']:
-                df.loc[i, 'last_change_date'] = prev_row['date']
-
-# output the final dataframe
 print(df)
