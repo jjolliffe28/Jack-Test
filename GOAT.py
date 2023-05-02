@@ -7,6 +7,20 @@ df = df.merge(flag_changed['Reentered Leverage'], on='name')
 # save the updated DataFrame to a new file or overwrite the original
 df.to_csv('updated_dataset.csv', index=False)
 
+
+# load your dataset into a DataFrame object
+df = pd.read_csv('your_dataset.csv')
+
+# group by name and flag, then check if all the flags are N for a given name
+flag_counts = df.groupby('name')['flag'].value_counts().unstack().fillna(0)
+n_only_names = flag_counts[flag_counts['Y'] == 0].index
+
+# remove all records for names with flags that are always N
+df = df[~df['name'].isin(n_only_names)]
+
+# save the updated DataFrame to a new file or overwrite the original
+df.to_csv('updated_dataset.csv', index=False)
+
 import pandas as pd
 
 # create sample dataset
