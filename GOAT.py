@@ -1,3 +1,12 @@
+flag_changed = df.groupby(['name', 'flag'])['flag'].count().unstack().fillna(0)
+flag_changed['Reentered Leverage'] = ((flag_changed['Y'] > 1) & (flag_changed['N'] > 0)).astype(bool)
+
+# merge the flag_changed DataFrame back into the original DataFrame on the 'name' column
+df = df.merge(flag_changed['Reentered Leverage'], on='name')
+
+# save the updated DataFrame to a new file or overwrite the original
+df.to_csv('updated_dataset.csv', index=False)
+
 import pandas as pd
 
 # create sample dataset
