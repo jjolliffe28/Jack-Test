@@ -68,4 +68,10 @@ for name in df['name'].unique():
 # create a new column in the dataframe to store the last change dates
 df['Last Change'] = df['name'].apply(lambda x: last_change_dates[x])
 
-print(df
+print(df)
+
+# group by Source ID and calculate the number of 'Y' values in Leveraged Flag
+grouped = df.groupby('Source ID')['Leveraged Flag'].apply(lambda x: sum(x == 'Y'))
+
+# create a new column 'Always Y' in the original dataframe
+df['Always Y'] = df['Source ID'].map(grouped) == df.groupby('Source ID')['Leveraged Flag'].count()
