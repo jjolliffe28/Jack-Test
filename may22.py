@@ -10,10 +10,16 @@ row_name = 'Cash'  # Replace with your actual row name
 df = pd.read_excel(file_path, skiprows=lambda x: x in pd.read_excel(file_path, header=None, skiprows=None, nrows=x, na_values=['NA']).dropna(how='all').index)
 
 # Find the index of the row containing the given row name
-row_index = df.index[df.iloc[:, 0] == row_name].tolist()[0]
+row_indices = df.index[df.iloc[:, 0] == row_name].tolist()
 
-# Extract the values from the next 4 visible cells to the right
-values = df.iloc[row_index, df.columns.get_loc('G'):df.columns.get_loc('J')+1].tolist()
+if row_indices:
+    row_index = row_indices[0]
 
-# Print the extracted values
-print(values)
+    # Extract the values from the next 4 visible cells to the right
+    values = df.iloc[row_index, df.columns.get_loc('G'):df.columns.get_loc('J')+1].tolist()
+
+    # Print the extracted values
+    print(values)
+else:
+    print("Row name not found in the Excel file.")
+
