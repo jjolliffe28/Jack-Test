@@ -12,29 +12,29 @@ for file in glob.glob(folder_path):
     # Extract the month and year from the file name (assuming the format 'Simulation Rates MMYY.xlsm')
     forecast = file.split('Simulation Rates ')[1].replace('.xlsm', '')
     
-    # Load the sheet 'RI MV' but let pandas auto-detect where the table starts
+    # Load the sheet 'RI MV' but without a header to identify the correct rows/columns
     df = pd.read_excel(file, sheet_name='RI MV', header=None)
     
-    # Find the row where the table actually starts (e.g., where dates start)
+    # Locate where the actual data starts by finding the first row that has dates (e.g., formatted like 12/31/2022)
     for i, row in df.iterrows():
         if pd.to_datetime(row, errors='coerce').notna().sum() > 0:
-            start_row = i - 1  # The header row with metric names is typically just above the first date row
+            start_row = i
             break
-
-    # Reload the file with the correct starting row
+    
+    # Now reload the file with the correct start row
     df = pd.read_excel(file, sheet_name='RI MV', skiprows=start_row)
-
+    
+    # Assume that the first row after skipping contains the dates
+    df.columns = ['Metric'] + list(df.columns[1:])
+    
     # Extract the rows containing 'Fed Fund' and 'Fed Fund Effective Rate'
-    fed_fund_data = df[df.iloc[:, 0].str.contains('Fed Fund', na=False)]
+    fed_fund_data = df[df['Metric'].str.contains('Fed Fund', na=False)]
     
-    # Rename the first column to 'Metric' and retain date columns
-    fed_fund_data.rename(columns={fed_fund_data.columns[0]: 'Metric'}, inplace=True)
-    
-    # Melt the dataframe to make it long-format (Metric, Date, Value)
+    # Reshape the data using melt, keeping the dates as columns
     melted_data = pd.melt(fed_fund_data, id_vars=['Metric'], var_name='Date', value_name='Value')
     
-    # Ensure the 'Date' column is in datetime format
-    melted_data['Date'] = pd.to_datetime(melted_data['Date'], errors='coerce')
+    # Convert 'Date' column to datetime (since the date column should have proper dates now)
+    melted_data['Date'] = pd.to_datetime(melted_data['Date'], errors='coerce', format='%m/%d/%Y')
     
     # Add a column for the forecast based on the file name
     melted_data['Forecast'] = forecast
